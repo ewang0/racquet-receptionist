@@ -48,16 +48,22 @@ const hoursOfOperation = {
 // Webhook endpoint for Retell
 app.post('/webhook', (req, res) => {
   const { call } = req.body;
-  const transcript = call.transcript;
+  const transcript = call.transcript_object;
   const callId = call.call_id;
 
   console.log(`Received webhook for call ${callId}`);
   console.log('Transcript:', transcript);
   console.log('request body:', req.body);
   
-  // Default response if we can't determine intent
-  let responseToUser = {
-    response: "I'm not sure I understand. I can help with tennis court availability, pricing, or hours of operation. What would you like to know?",
+  // Default response with structured data
+  let responseData: {
+    intent: string;
+    data: any;
+    context: string;
+  } = {
+    intent: "unknown",
+    data: null,
+    context: "I can help with tennis court availability, pricing, or hours of operation."
   };
 
   // Extract the latest user message
@@ -73,13 +79,11 @@ app.post('/webhook', (req, res) => {
       userMessageLower.includes('book') || 
       userMessageLower.includes('reserve')) {
     
-    // Handle court availability request
-    const courtInfo = tennisCourts.map(court => 
-      `${court.name} (${court.surface}) is available at: ${court.availability.join(', ')}`
-    ).join('. ');
-    
-    responseToUser = {
-      response: `Here's our current tennis court availability: ${courtInfo}. Would you like to book a court?`,
+    // Return structured court availability data
+    responseData = {
+      intent: "court_availability",
+      data: tennisCourts,
+      context: "User asked about general court availability"
     };
   } 
   else if (userMessageLower.includes('price') || 
@@ -87,9 +91,11 @@ app.post('/webhook', (req, res) => {
            userMessageLower.includes('fee') || 
            userMessageLower.includes('how much')) {
     
-    // Handle pricing request
-    responseToUser = {
-      response: `Our standard rate is ${pricing.hourlyRate}. Clay courts are ${pricing.courtTypes.clay} and hard courts are ${pricing.courtTypes.hard}. ${pricing.discounts}. Would you like to know about our membership options?`,
+    // Return structured pricing data
+    responseData = {
+      intent: "pricing",
+      data: pricing,
+      context: "User asked about pricing information"
     };
   } 
   else if (userMessageLower.includes('hour') || 
@@ -97,81 +103,79 @@ app.post('/webhook', (req, res) => {
            userMessageLower.includes('close') || 
            userMessageLower.includes('time')) {
     
-    // Handle hours of operation request
-    responseToUser = {
-      response: `We're open weekdays from ${hoursOfOperation.weekdays}, weekends from ${hoursOfOperation.weekends}, and holidays from ${hoursOfOperation.holidays}. Is there a specific day you're interested in?`,
+    // Return structured hours data
+    responseData = {
+      intent: "hours",
+      data: hoursOfOperation,
+      context: "User asked about hours of operation"
     };
   }
   else if (userMessageLower.includes('court 1') || userMessageLower.includes('court one')) {
     const court = tennisCourts.find(c => c.id === 1);
     if (court) {
-      responseToUser = {
-        response: `${court.name} is a ${court.surface} court and is available at: ${court.availability.join(', ')}. Would you like to book this court?`,
-      };
-    } else {
-      responseToUser = {
-        response: "I'm sorry, I couldn't find information about Court 1.",
+      responseData = {
+        intent: "specific_court",
+        data: court,
+        context: "User asked about Court 1"
       };
     }
   }
   else if (userMessageLower.includes('court 2') || userMessageLower.includes('court two')) {
     const court = tennisCourts.find(c => c.id === 2);
     if (court) {
-      responseToUser = {
-        response: `${court.name} is a ${court.surface} court and is available at: ${court.availability.join(', ')}. Would you like to book this court?`,
-      };
-    } else {
-      responseToUser = {
-        response: "I'm sorry, I couldn't find information about Court 2.",
+      responseData = {
+        intent: "specific_court",
+        data: court,
+        context: "User asked about Court 2"
       };
     }
   }
   else if (userMessageLower.includes('court 3') || userMessageLower.includes('court three')) {
     const court = tennisCourts.find(c => c.id === 3);
     if (court) {
-      responseToUser = {
-        response: `${court.name} is a ${court.surface} court and is available at: ${court.availability.join(', ')}. Would you like to book this court?`,
-      };
-    } else {
-      responseToUser = {
-        response: "I'm sorry, I couldn't find information about Court 3.",
+      responseData = {
+        intent: "specific_court",
+        data: court,
+        context: "User asked about Court 3"
       };
     }
   }
   else if (userMessageLower.includes('court 4') || userMessageLower.includes('court four')) {
     const court = tennisCourts.find(c => c.id === 4);
     if (court) {
-      responseToUser = {
-        response: `${court.name} is a ${court.surface} court and is available at: ${court.availability.join(', ')}. Would you like to book this court?`,
-      };
-    } else {
-      responseToUser = {
-        response: "I'm sorry, I couldn't find information about Court 4.",
+      responseData = {
+        intent: "specific_court",
+        data: court,
+        context: "User asked about Court 4"
       };
     }
   }
   else if (userMessageLower.includes('clay') || userMessageLower.includes('clay court')) {
     const clayCourts = tennisCourts.filter(c => c.surface.toLowerCase() === 'clay');
-    const clayCourtInfo = clayCourts.map(court => 
-      `${court.name} is available at: ${court.availability.join(', ')}`
-    ).join('. ');
-    
-    responseToUser = {
-      response: `We have ${clayCourts.length} clay courts. ${clayCourtInfo}. Clay courts cost ${pricing.courtTypes.clay}. Would you like to book one?`,
+    responseData = {
+      intent: "surface_courts",
+      data: {
+        surface: "clay",
+        courts: clayCourts,
+        pricing: pricing.courtTypes.clay
+      },
+      context: "User asked about clay courts"
     };
   }
   else if (userMessageLower.includes('hard') || userMessageLower.includes('hard court')) {
     const hardCourts = tennisCourts.filter(c => c.surface.toLowerCase() === 'hard');
-    const hardCourtInfo = hardCourts.map(court => 
-      `${court.name} is available at: ${court.availability.join(', ')}`
-    ).join('. ');
-    
-    responseToUser = {
-      response: `We have ${hardCourts.length} hard courts. ${hardCourtInfo}. Hard courts cost ${pricing.courtTypes.hard}. Would you like to book one?`,
+    responseData = {
+      intent: "surface_courts",
+      data: {
+        surface: "hard",
+        courts: hardCourts,
+        pricing: pricing.courtTypes.hard
+      },
+      context: "User asked about hard courts"
     };
   }
 
-  res.json(responseToUser);
+  res.json(responseData);
 });
 
 app.listen(port, () => {
