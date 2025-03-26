@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import Retell from 'retell-sdk';
 import bodyParser from 'body-parser';
+import { scrapeCourtAvailability } from './scrapeGoodland';
 
 dotenv.config();
 
@@ -45,8 +46,49 @@ const hoursOfOperation = {
   holidays: '10:00 AM - 4:00 PM',
 };
 
+// Add a new route for testing court availability scraping
+app.post('/test/court-availability', async (req, res) => {
+  try {
+    console.log('Testing court availability scraping...');
+    const liveAvailability = await scrapeCourtAvailability();
+    
+    // Structured response data
+    const responseData: {
+      intent: string;
+      data: any;
+      context: string;
+    } = {
+      intent: "court_availability_test",
+      data: {
+        liveAvailability: liveAvailability
+      },
+      context: "This is a test endpoint for court availability scraping."
+    };
+   
+    console.log("responseData:", responseData);
+    res.json(responseData);
+  } catch (error: unknown) {
+    console.error('Error fetching live court availability:', error);
+    
+    // Error response with structured data
+    const responseData: {
+      intent: string;
+      data: any;
+      context: string;
+    } = {
+      intent: "error",
+      data: {
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      },
+      context: "An error occurred while testing court availability scraping."
+    };
+    
+    res.status(500).json(responseData);
+  }
+});
+
 // Webhook endpoint for Retell
-app.post('/webhook', (req, res) => {
+app.post('/webhook', async (req, res) => {
   const { call } = req.body;
   const transcript = call.transcript_object;
   const callId = call.call_id;
@@ -79,12 +121,29 @@ app.post('/webhook', (req, res) => {
       userMessageLower.includes('book') || 
       userMessageLower.includes('reserve')) {
     
-    // Return structured court availability data
-    responseData = {
-      intent: "court_availability",
-      data: tennisCourts,
-      context: "User asked about general court availability"
-    };
+    try {
+      // Get real-time court availability data
+      const liveAvailability = await scrapeCourtAvailability();
+      
+      // Return structured court availability data with live information
+      responseData = {
+        intent: "court_availability",
+        data: {
+          mockCourts: tennisCourts, // Keep the mock data for reference
+          liveAvailability: liveAvailability // Add the scraped live data
+        },
+        context: "User asked about general court availability. Providing live court availability data."
+      };
+    } catch (error) {
+      console.error('Error fetching live court availability:', error);
+      
+      // Fallback to mock data if scraping fails
+      responseData = {
+        intent: "court_availability",
+        data: tennisCourts,
+        context: "User asked about general court availability. Using mock data due to live data fetch error."
+      };
+    }
   } 
   else if (userMessageLower.includes('price') || 
            userMessageLower.includes('cost') || 
