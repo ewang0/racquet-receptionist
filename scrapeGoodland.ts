@@ -1,11 +1,11 @@
 import puppeteer from 'puppeteer';
 
-type CourtAvailability = {
+export type CourtAvailability = {
   time: string;
   info: string;
 };
 
-const scrapeCourtAvailability = async (): Promise<CourtAvailability[]> => {
+export const scrapeCourtAvailability = async (): Promise<CourtAvailability[]> => {
   console.log('Starting browser...');
   const browser = await puppeteer.launch();
   
@@ -60,10 +60,3 @@ const scrapeCourtAvailability = async (): Promise<CourtAvailability[]> => {
   console.log('Scraping complete!');
   return availability;
 };
-
-// Run the script
-scrapeCourtAvailability().then((data) => {
-  console.log('Court Availability:');
-  console.log('Data:', data);
-  console.table(data);
-});
