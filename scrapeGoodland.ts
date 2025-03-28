@@ -58,9 +58,3 @@ export const scrapeCourtAvailability = async (): Promise<CourtAvailability[]> =>
   console.log('Scraping complete!');
   return availability;
 };
-
-scrapeCourtAvailability().then((data) => {
-  console.log('Court Availability:');
-  console.log('Data:', data);
-  console.table(data);
-});
