@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 // import Retell from 'retell-sdk';
 import bodyParser from 'body-parser';
 import { scrapeCourtAvailability } from './scrapeGoodland';
+import { Twilio } from "twilio";
 
 dotenv.config();
 
@@ -54,6 +55,31 @@ app.post('/goodland/court-availability', async (req, res) => {
     };
     
     res.status(500).json(responseData);
+  }
+});
+
+app.post('/goodland/send-sms', async (req, res) => {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+  const authToken = process.env.TWILIO_AUTH_TOKEN!;
+  const whatsappFrom = process.env.TWILIO_WHATSAPP_NUMBER!;
+  const whatsappTo = process.env.TWILIO_WHATSAPP_TO_NUMBER!;
+  const { courtNumber, time } = req.body;
+  const message = `Thanks for sending a booking request for court ${courtNumber} at ${time}. Please follow this link to book and confirm your reservation: https://goodland.podplay.app/book`;
+
+  const client = new Twilio(accountSid, authToken);
+
+  try {
+    const response = await client.messages.create({
+      from: `whatsapp:${whatsappFrom}`,
+      to: `whatsapp:${whatsappTo}`,
+      body: message,
+    });
+
+    console.log(`twilioResponse:`, response)
+
+    return res.status(200).json({ success: true, response });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
   }
 });
 
