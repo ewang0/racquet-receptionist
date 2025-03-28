@@ -36,8 +36,6 @@ export const scrapeCourtAvailability = async (): Promise<CourtAvailability[]> =>
       document.querySelectorAll('ol[class*="BookingItemPicker"][class*="sessions-list"] > li')
     );
 
-    console.log('items:', items);
-
     return items.map((item) => {
       // Use partial class name matching with attribute selectors
       const timeEl = item.querySelector<HTMLTimeElement>(
@@ -60,3 +58,9 @@ export const scrapeCourtAvailability = async (): Promise<CourtAvailability[]> =>
   console.log('Scraping complete!');
   return availability;
 };
+
+scrapeCourtAvailability().then((data) => {
+  console.log('Court Availability:');
+  console.log('Data:', data);
+  console.table(data);
+});
